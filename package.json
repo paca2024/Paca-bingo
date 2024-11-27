@@ -5,8 +5,9 @@
   "main": "app.js",
   "scripts": {
     "test": "hardhat test",
-    "build": "webpack",
-    "start": "npx http-server ."
+    "build": "webpack --mode production",
+    "start": "npx http-server .",
+    "dev": "webpack --mode development --watch"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.9.3",
@@ -23,6 +24,7 @@
     "hardhat": "^2.17.1",
     "dotenv-webpack": "latest",
     "webpack": "latest",
-    "webpack-cli": "latest"
+    "webpack-cli": "latest",
+    "http-server": "^14.1.1"
   }
 }
