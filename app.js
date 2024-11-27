@@ -598,6 +598,66 @@ class PacaBingo {
         // Check again in 5 seconds
         setTimeout(() => this.monitorGameState(), 5000);
     }
+
+    async handleGameMode(mode) {
+        try {
+            if (!this.web3 || !this.account) {
+                alert('Please connect your wallet first');
+                return;
+            }
+
+            console.log(`Starting ${mode} mode...`);
+            
+            // Get entry fee based on mode
+            const entryFees = {
+                'solo': '1000000000000000000', // 1 USDT (18 decimals)
+                '5v5': '2000000000000000000',  // 2 USDT
+                '10v10': '5000000000000000000', // 5 USDT
+                '20v20': '10000000000000000000' // 10 USDT
+            };
+
+            const entryFee = entryFees[mode];
+            
+            // First, check USDT allowance
+            const usdtContract = new this.web3.eth.Contract(this.usdtABI, this.usdtAddress);
+            const allowance = await usdtContract.methods.allowance(this.account, this.contractAddress).call();
+            
+            if (BigInt(allowance) < BigInt(entryFee)) {
+                console.log('Requesting USDT approval...');
+                // Request approval for max uint256
+                const maxUint256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
+                await usdtContract.methods.approve(this.contractAddress, maxUint256)
+                    .send({ from: this.account });
+            }
+
+            // Get contract instance
+            const gameContract = new this.web3.eth.Contract(this.contractABI, this.contractAddress);
+            
+            // Get mode enum value
+            const modeEnum = this.getModeEnum(mode);
+            
+            // Buy ticket
+            console.log(`Buying ticket for ${mode} mode...`);
+            const tx = await gameContract.methods.buyTicket(modeEnum)
+                .send({ from: this.account });
+                
+            console.log('Transaction successful:', tx.transactionHash);
+            
+            // Show success message
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status success';
+            statusDiv.textContent = `Successfully joined ${mode} mode! Transaction: ${tx.transactionHash.substring(0, 10)}...`;
+            
+            // Start monitoring game state
+            this.monitorGameState();
+
+        } catch (error) {
+            console.error('Error in game mode:', error);
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status error';
+            statusDiv.textContent = `Error: ${error.message}`;
+        }
+    }
 }
 
 // Initialize when the page is loaded
@@ -607,6 +667,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Set up initial wallet connection button
     document.getElementById('connectWallet').onclick = () => window.pacaBingo.connectWallet();
+    
+    // Set up game mode buttons
+    document.getElementById('soloMode').onclick = () => window.pacaBingo.handleGameMode('solo');
+    document.getElementById('5v5Mode').onclick = () => window.pacaBingo.handleGameMode('5v5');
+    document.getElementById('10v10Mode').onclick = () => window.pacaBingo.handleGameMode('10v10');
+    document.getElementById('20v20Mode').onclick = () => window.pacaBingo.handleGameMode('20v20');
     
     // Disable game buttons initially
     window.pacaBingo.disableGameButtons();
