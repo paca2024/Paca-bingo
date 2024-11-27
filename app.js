@@ -6,152 +6,53 @@ class PacaBingo {
         this.appName = process.env.APP_NAME || 'Paca Bingo';
         this.apiKey = process.env.API_KEY;
         
-        // Contract configuration
+        // Contract addresses on BSC
         this.contractAddress = '0x36294477e1b5eF4b6531DE2dD8aa79bb6ceBBd36';
         this.stakingAddress = '0x30D22DA999f201666fB94F09aedCA24419822e5C';
         this.adminAddress = '0x9B34b37dc4D5917A22289Cf51473c22a2F5f3984'.toLowerCase();
         this.usdtAddress = '0x55d398326f99059fF775485246999027B3197955';
+        
+        // Contract ABIs
         this.usdtABI = [
             {
                 "constant": true,
-                "inputs": [{"name": "_owner", "type": "address"}],
-                "name": "balanceOf",
-                "outputs": [{"name": "balance", "type": "uint256"}],
+                "inputs": [{"name": "_owner", "type": "address"}, {"name": "_spender", "type": "address"}],
+                "name": "allowance",
+                "outputs": [{"name": "", "type": "uint256"}],
+                "payable": false,
+                "stateMutability": "view",
                 "type": "function"
             },
             {
                 "constant": false,
-                "inputs": [
-                    {"name": "_spender", "type": "address"},
-                    {"name": "_value", "type": "uint256"}
-                ],
+                "inputs": [{"name": "_spender", "type": "address"}, {"name": "_value", "type": "uint256"}],
                 "name": "approve",
                 "outputs": [{"name": "", "type": "bool"}],
-                "type": "function"
-            },
-            {
-                "constant": true,
-                "inputs": [
-                    {"name": "_owner", "type": "address"},
-                    {"name": "_spender", "type": "address"}
-                ],
-                "name": "allowance",
-                "outputs": [{"name": "", "type": "uint256"}],
+                "payable": false,
+                "stateMutability": "nonpayable",
                 "type": "function"
             }
         ];
+        
         this.contractABI = [
             {
-                "inputs": [
-                    {"internalType": "address", "name": "_usdtToken", "type": "address"},
-                    {"internalType": "address", "name": "_stakingContract", "type": "address"}
-                ],
-                "stateMutability": "nonpayable",
-                "type": "constructor"
-            },
-            {
-                "anonymous": false,
-                "inputs": [
-                    {"indexed": true, "internalType": "uint256", "name": "gameId", "type": "uint256"},
-                    {"indexed": false, "internalType": "enum PacaBingo.GameMode", "name": "mode", "type": "uint8"}
-                ],
-                "name": "GameCreated",
-                "type": "event"
-            },
-            {
-                "anonymous": false,
-                "inputs": [
-                    {"indexed": true, "internalType": "uint256", "name": "gameId", "type": "uint256"},
-                    {"indexed": false, "internalType": "address", "name": "winner", "type": "address"}
-                ],
-                "name": "GameFinished",
-                "type": "event"
-            },
-            {
-                "anonymous": false,
-                "inputs": [
-                    {"indexed": true, "internalType": "uint256", "name": "gameId", "type": "uint256"},
-                    {"indexed": true, "internalType": "address", "name": "player", "type": "address"}
-                ],
-                "name": "TicketPurchased",
-                "type": "event"
-            },
-            {
-                "inputs": [{"internalType": "enum PacaBingo.GameMode", "name": "mode", "type": "uint8"}],
+                "inputs": [{"internalType": "uint8", "name": "mode", "type": "uint8"}],
                 "name": "buyTicket",
                 "outputs": [],
                 "stateMutability": "nonpayable",
                 "type": "function"
             },
             {
-                "inputs": [],
-                "name": "currentGameId",
-                "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [{"internalType": "uint256", "name": "gameId", "type": "uint256"}],
-                "name": "getGameInfo",
-                "outputs": [
-                    {"internalType": "enum PacaBingo.GameMode", "name": "mode", "type": "uint8"},
-                    {"internalType": "uint256", "name": "prizePool", "type": "uint256"},
-                    {"internalType": "bool", "name": "active", "type": "bool"},
-                    {"internalType": "uint256", "name": "playerCount", "type": "uint256"}
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [{"internalType": "uint256", "name": "gameId", "type": "uint256"}],
-                "name": "getGamePlayers",
-                "outputs": [{"internalType": "address[]", "name": "", "type": "address[]"}],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-                "name": "games",
-                "outputs": [
-                    {"internalType": "enum PacaBingo.GameMode", "name": "mode", "type": "uint8"},
-                    {"internalType": "uint256", "name": "prizePool", "type": "uint256"},
-                    {"internalType": "bool", "name": "active", "type": "bool"}
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [{"internalType": "address", "name": "", "type": "address"}],
-                "name": "playerGames",
-                "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [{"internalType": "enum PacaBingo.GameMode", "name": "", "type": "uint8"}],
-                "name": "playerLimits",
-                "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+                "inputs": [{"internalType": "address", "name": "player", "type": "address"}],
+                "name": "getPlayerGameMode",
+                "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}],
                 "stateMutability": "view",
                 "type": "function"
             },
             {
                 "inputs": [],
-                "name": "stakingContract",
-                "outputs": [{"internalType": "contract IStaking", "name": "", "type": "address"}],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [{"internalType": "enum PacaBingo.GameMode", "name": "", "type": "uint8"}],
-                "name": "ticketPrices",
-                "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "usdt",
-                "outputs": [{"internalType": "contract IERC20", "name": "", "type": "address"}],
+                "name": "getGameState",
+                "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}],
                 "stateMutability": "view",
                 "type": "function"
             }
@@ -437,9 +338,10 @@ class PacaBingo {
             // First approve USDT spending if needed
             if (BigInt(allowance) < BigInt(price)) {
                 console.log('Approving USDT spending...');
-                const approveResult = await this.usdtContract.methods.approve(this.contractAddress, price)
+                // Request approval for max uint256
+                const maxUint256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
+                await this.usdtContract.methods.approve(this.contractAddress, maxUint256)
                     .send({ from: this.account });
-                console.log('USDT approved:', approveResult);
             } else {
                 console.log('USDT already approved');
             }
