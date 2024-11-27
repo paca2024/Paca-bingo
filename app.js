@@ -40,10 +40,30 @@ class PacaBingo {
             }
         ];
         
-        // Setup MetaMask event listeners
+        // Initialize Web3 if MetaMask is available
         if (typeof window.ethereum !== 'undefined') {
-            window.ethereum.on('accountsChanged', this.handleAccountsChanged.bind(this));
-            window.ethereum.on('chainChanged', () => window.location.reload());
+            this.web3 = new Web3(window.ethereum);
+            
+            // Setup MetaMask event listeners
+            window.ethereum.on('accountsChanged', (accounts) => {
+                console.log('Accounts changed:', accounts);
+                this.handleAccountsChanged(accounts);
+            });
+            
+            window.ethereum.on('chainChanged', () => {
+                console.log('Chain changed, reloading...');
+                window.location.reload();
+            });
+            
+            // Try to get initial accounts
+            this.web3.eth.getAccounts().then(accounts => {
+                if (accounts && accounts.length > 0) {
+                    console.log('Found existing account:', accounts[0]);
+                    this.handleAccountsChanged(accounts);
+                }
+            }).catch(error => {
+                console.error('Error getting accounts:', error);
+            });
         }
     }
 
@@ -54,11 +74,13 @@ class PacaBingo {
             if (typeof window.ethereum !== 'undefined') {
                 // Request account access
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                
+                if (!accounts || accounts.length === 0) {
+                    throw new Error('No accounts found');
+                }
+                
                 this.account = accounts[0];
                 console.log('Connected wallet:', this.account);
-
-                // Initialize Web3
-                this.web3 = new Web3(window.ethereum);
 
                 // Update UI
                 document.getElementById('walletStatus').innerHTML = `
@@ -150,7 +172,6 @@ class PacaBingo {
 
     disconnectWallet() {
         this.account = null;
-        this.web3 = null;
         
         // Update UI
         document.getElementById('walletStatus').innerHTML = `
@@ -179,9 +200,12 @@ class PacaBingo {
     }
 
     handleAccountsChanged(accounts) {
-        if (accounts.length === 0) {
+        console.log('Handling account change:', accounts);
+        if (!accounts || accounts.length === 0) {
+            console.log('No accounts found, disconnecting...');
             this.disconnectWallet();
         } else if (accounts[0] !== this.account) {
+            console.log('New account detected:', accounts[0]);
             this.account = accounts[0];
             this.connectWallet();
         }
@@ -194,13 +218,31 @@ document.addEventListener('DOMContentLoaded', () => {
     window.pacaBingo = new PacaBingo();
     
     // Set up initial wallet connection button
-    document.getElementById('connectWallet').onclick = () => window.pacaBingo.connectWallet();
+    const connectWalletBtn = document.getElementById('connectWallet');
+    if (connectWalletBtn) {
+        connectWalletBtn.onclick = () => window.pacaBingo.connectWallet();
+    }
     
     // Set up game mode buttons
-    document.getElementById('soloMode').onclick = () => window.pacaBingo.handleGameMode('solo');
-    document.getElementById('5v5Mode').onclick = () => window.pacaBingo.handleGameMode('5v5');
-    document.getElementById('10v10Mode').onclick = () => window.pacaBingo.handleGameMode('10v10');
-    document.getElementById('20v20Mode').onclick = () => window.pacaBingo.handleGameMode('20v20');
+    const soloModeBtn = document.getElementById('soloMode');
+    if (soloModeBtn) {
+        soloModeBtn.onclick = () => window.pacaBingo.handleGameMode('solo');
+    }
+    
+    const fiveVsFiveBtn = document.getElementById('5v5Mode');
+    if (fiveVsFiveBtn) {
+        fiveVsFiveBtn.onclick = () => window.pacaBingo.handleGameMode('5v5');
+    }
+    
+    const tenVsTenBtn = document.getElementById('10v10Mode');
+    if (tenVsTenBtn) {
+        tenVsTenBtn.onclick = () => window.pacaBingo.handleGameMode('10v10');
+    }
+    
+    const twentyVsTwentyBtn = document.getElementById('20v20Mode');
+    if (twentyVsTwentyBtn) {
+        twentyVsTwentyBtn.onclick = () => window.pacaBingo.handleGameMode('20v20');
+    }
     
     // Disable game buttons initially
     window.pacaBingo.disableGameButtons();
