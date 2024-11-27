@@ -12,10 +12,10 @@
             --primary-color: #6C5CE7;
             --secondary-color: #A8A4FF;
             --accent-color: #00D2D3;
-            --background-color: #F8F9FD;
-            --card-background: #FFFFFF;
-            --text-primary: #2D3436;
-            --text-secondary: #636E72;
+            --background-color: #1A1B1E;
+            --card-background: #2D2E32;
+            --text-primary: #FFFFFF;
+            --text-secondary: #A0A0A0;
             --success-color: #00B894;
             --error-color: #FF7675;
         }
@@ -46,7 +46,7 @@
             background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             color: white;
             border-radius: 1rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
         }
 
         h1 {
@@ -73,14 +73,14 @@
             padding: 1.5rem;
             text-align: center;
             transition: all 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             border: 2px solid transparent;
         }
 
         .game-mode:hover {
             transform: translateY(-5px);
             border-color: var(--accent-color);
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
         }
 
         .game-mode h3 {
@@ -118,13 +118,48 @@
             letter-spacing: 1px;
         }
 
-        button:hover {
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        button:not(:disabled):hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(108, 92, 231, 0.3);
         }
 
-        button:active {
-            transform: translateY(0);
+        .wallet-status {
+            text-align: center;
+            margin: 1rem 0;
+            padding: 1.5rem;
+            background: var(--card-background);
+            border-radius: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .wallet-status p {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .connect-wallet {
+            display: inline-block;
+            background: var(--accent-color);
+            padding: 0.8rem 1.5rem;
+            border-radius: 0.5rem;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .connect-wallet:hover {
+            background: var(--primary-color);
+            transform: translateY(-2px);
         }
 
         .status {
@@ -143,31 +178,6 @@
         .error {
             background-color: var(--error-color);
             color: white;
-        }
-
-        .wallet-status {
-            text-align: center;
-            margin: 1rem 0;
-            padding: 1rem;
-            background: var(--card-background);
-            border-radius: 0.5rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-
-        .connect-wallet {
-            display: inline-block;
-            margin-top: 1rem;
-            background: var(--accent-color);
-            padding: 0.8rem 1.5rem;
-            border-radius: 0.5rem;
-            color: white;
-            text-decoration: none;
-            transition: all 0.3s ease;
-        }
-
-        .connect-wallet:hover {
-            background: var(--primary-color);
-            transform: translateY(-2px);
         }
 
         @media (max-width: 768px) {

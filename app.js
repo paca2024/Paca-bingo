@@ -324,42 +324,65 @@ class PacaBingo {
     async connectWallet(silent = false) {
         try {
             console.log('Connecting wallet...');
-            let accounts;
-            
-            if (!silent) {
-                accounts = await window.ethereum.request({
-                    method: 'eth_requestAccounts'
-                });
+            // Check if MetaMask is installed
+            if (typeof window.ethereum !== 'undefined') {
+                // Request account access
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                this.account = accounts[0];
+                console.log('Connected wallet:', this.account);
+
+                // Initialize Web3
+                this.web3 = new Web3(window.ethereum);
+
+                // Update UI
+                document.getElementById('walletStatus').innerHTML = `
+                    <p>Connected: ${this.account.substring(0, 6)}...${this.account.substring(38)}</p>
+                    <button class="connect-wallet" onclick="window.pacaBingo.disconnectWallet()">Disconnect Wallet</button>
+                `;
+
+                // Enable game mode buttons
+                this.enableGameButtons();
+                return true;
             } else {
-                accounts = await window.ethereum.request({
-                    method: 'eth_accounts'
-                });
+                console.error('MetaMask is not installed');
+                alert('Please install MetaMask to use this dApp');
+                return false;
             }
-
-            if (accounts.length === 0) {
-                throw new Error('No accounts found');
-            }
-
-            this.account = accounts[0];
-            this.walletAddress.textContent = this.account.slice(0, 6) + '...' + this.account.slice(-4);
-            this.connectBtn.style.display = 'none';
-            this.walletInfo.style.display = 'flex';
-
-            // Check if user is admin
-            this.isAdmin = this.account.toLowerCase() === this.adminAddress;
-            if (this.isAdmin && this.adminPanel) {
-                this.adminPanel.style.display = 'block';
-            }
-
-            // Update game mode prices
-            await this.updateGameModePrices();
-
-            console.log('Wallet connected:', this.account);
-            this.monitorGameState();
         } catch (error) {
-            console.error('Wallet connection error:', error);
+            console.error('Error connecting wallet:', error);
             alert('Failed to connect wallet: ' + error.message);
+            return false;
         }
+    }
+
+    disconnectWallet() {
+        this.account = null;
+        this.web3 = null;
+        
+        // Update UI
+        document.getElementById('walletStatus').innerHTML = `
+            <p>Connect your wallet to start playing</p>
+            <button class="connect-wallet" onclick="window.pacaBingo.connectWallet()">Connect Wallet</button>
+        `;
+
+        // Disable game mode buttons
+        this.disableGameButtons();
+    }
+
+    enableGameButtons() {
+        const buttons = document.querySelectorAll('.game-mode button');
+        buttons.forEach(button => {
+            button.disabled = false;
+            button.style.opacity = '1';
+        });
+    }
+
+    disableGameButtons() {
+        const buttons = document.querySelectorAll('.game-mode button');
+        buttons.forEach(button => {
+            button.disabled = true;
+            button.style.opacity = '0.5';
+        });
     }
 
     async updateGameModePrices() {
@@ -449,32 +472,6 @@ class PacaBingo {
             '20v20': 3
         }[mode];
         return modeEnum;
-    }
-
-    disconnectWallet() {
-        console.log('Disconnecting wallet...');
-        this.account = null;
-        this.isAdmin = false;
-        this.connectBtn.style.display = 'block';
-        this.walletInfo.style.display = 'none';
-        if (this.adminPanel) {
-            this.adminPanel.style.display = 'none';
-        }
-
-        // Reset game modes
-        document.querySelectorAll('.mode-card').forEach(card => {
-            card.classList.remove('selected');
-            const priceElement = card.querySelector('.price');
-            if (priceElement) {
-                priceElement.textContent = 'Connect Wallet';
-            }
-        });
-
-        // Hide game info
-        const gameInfo = document.getElementById('gameInfo');
-        if (gameInfo) {
-            gameInfo.style.display = 'none';
-        }
     }
 
     async handleAccountsChanged(accounts) {
@@ -607,4 +604,10 @@ class PacaBingo {
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Creating PacaBingo instance...');
     window.pacaBingo = new PacaBingo();
+    
+    // Set up initial wallet connection button
+    document.getElementById('connectWallet').onclick = () => window.pacaBingo.connectWallet();
+    
+    // Disable game buttons initially
+    window.pacaBingo.disableGameButtons();
 });
