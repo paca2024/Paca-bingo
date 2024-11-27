@@ -1,16 +1,12 @@
 class PacaBingo {
     constructor() {
-        console.log('PacaBingo constructor started');
-        
-        // App configuration
-        this.appName = process.env.APP_NAME || 'Paca Bingo';
-        this.apiKey = process.env.API_KEY;
-        
         // Contract addresses on BSC
         this.contractAddress = '0x36294477e1b5eF4b6531DE2dD8aa79bb6ceBBd36';
-        this.stakingAddress = '0x30D22DA999f201666fB94F09aedCA24419822e5C';
-        this.adminAddress = '0x9B34b37dc4D5917A22289Cf51473c22a2F5f3984'.toLowerCase();
         this.usdtAddress = '0x55d398326f99059fF775485246999027B3197955';
+        
+        // Initialize variables
+        this.web3 = null;
+        this.account = null;
         
         // Contract ABIs
         this.usdtABI = [
@@ -41,188 +37,17 @@ class PacaBingo {
                 "outputs": [],
                 "stateMutability": "nonpayable",
                 "type": "function"
-            },
-            {
-                "inputs": [{"internalType": "address", "name": "player", "type": "address"}],
-                "name": "getPlayerGameMode",
-                "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "getGameState",
-                "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}],
-                "stateMutability": "view",
-                "type": "function"
             }
         ];
         
-        // Initialize state
-        this.web3 = null;
-        this.contract = null;
-        this.usdtContract = null;
-        this.account = null;
-        this.isAdmin = false;
-        this.selectedMode = null;
-        this.ws = null;
-
-        // Wait for DOM to be ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                console.log('DOM loaded via event listener');
-                this.init();
-            });
-        } else {
-            console.log('DOM already loaded');
-            this.init();
-        }
-    }
-
-    async init() {
-        console.log('Initializing PacaBingo...');
-        
-        // Get DOM elements
-        this.connectBtn = document.getElementById('connectWalletBtn');
-        this.walletInfo = document.getElementById('walletInfo');
-        this.walletAddress = document.getElementById('walletAddress');
-        this.disconnectBtn = document.getElementById('disconnectWalletBtn');
-        this.adminPanel = document.getElementById('adminPanel');
-        this.adminToggleBtn = document.getElementById('adminToggleBtn');
-
-        // Add event listeners
-        this.connectBtn.addEventListener('click', () => this.connectWallet());
-        this.disconnectBtn.addEventListener('click', () => this.disconnectWallet());
-        if (this.adminToggleBtn) {
-            this.adminToggleBtn.addEventListener('click', () => this.toggleAdminPanel());
-        }
-
-        // Add click event listeners to mode cards
-        document.querySelectorAll('.mode-card').forEach(card => {
-            const selectBtn = card.querySelector('.select-mode-btn');
-            if (selectBtn) {
-                selectBtn.addEventListener('click', () => this.selectGameMode(card));
-            }
-        });
-
-        // Connect WebSocket
-        this.connectWebSocket();
-
-        // Check if Web3 is injected by MetaMask
+        // Setup MetaMask event listeners
         if (typeof window.ethereum !== 'undefined') {
-            try {
-                this.web3 = new Web3(window.ethereum);
-                
-                // Initialize contracts
-                this.contract = new this.web3.eth.Contract(this.contractABI, this.contractAddress);
-                this.usdtContract = new this.web3.eth.Contract(this.usdtABI, this.usdtAddress);
-
-                // Check if we're on BSC
-                const chainId = await this.web3.eth.getChainId();
-                if (chainId !== 56) { // BSC Mainnet
-                    alert('Please switch to Binance Smart Chain Mainnet');
-                    await window.ethereum.request({
-                        method: 'wallet_switchEthereumChain',
-                        params: [{ chainId: '0x38' }], // BSC Mainnet
-                    });
-                }
-
-                // Listen for account changes
-                window.ethereum.on('accountsChanged', accounts => this.handleAccountsChanged(accounts));
-                window.ethereum.on('chainChanged', () => window.location.reload());
-                
-                // Auto connect if previously connected
-                this.connectWallet(true);
-            } catch (error) {
-                console.error('Failed to initialize Web3:', error);
-                alert('Failed to initialize Web3: ' + error.message);
-            }
-        } else {
-            console.log('Please install MetaMask!');
-            alert('Please install MetaMask to play Paca Bingo!');
+            window.ethereum.on('accountsChanged', this.handleAccountsChanged.bind(this));
+            window.ethereum.on('chainChanged', () => window.location.reload());
         }
     }
 
-    connectWebSocket() {
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${wsProtocol}//${window.location.hostname}:8080`;
-        
-        this.ws = new WebSocket(wsUrl);
-
-        this.ws.onopen = () => {
-            console.log('Connected to WebSocket server');
-            // Start sending ping messages to keep connection alive
-            this.startPingInterval();
-        };
-
-        this.ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                if (data.type === 'playerCount') {
-                    this.updateOnlineCount(data.count);
-                }
-            } catch (error) {
-                console.error('Error processing WebSocket message:', error);
-            }
-        };
-
-        this.ws.onclose = () => {
-            console.log('WebSocket connection closed');
-            // Try to reconnect after 5 seconds
-            setTimeout(() => this.connectWebSocket(), 5000);
-        };
-
-        this.ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
-        };
-    }
-
-    startPingInterval() {
-        // Send ping every 30 seconds to keep connection alive
-        setInterval(() => {
-            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                this.ws.ping();
-            }
-        }, 30000);
-    }
-
-    updateOnlineCount(count) {
-        if (this.onlineCount) {
-            this.onlineCount.textContent = count;
-            
-            // Update game mode availability based on player count
-            document.querySelectorAll('.mode-card').forEach(card => {
-                const mode = card.dataset.mode;
-                const minPlayers = {
-                    'Solo': 1,
-                    '5v5': 5,
-                    '10v10': 10,
-                    '20v20': 20
-                }[mode];
-
-                const priceSpan = card.querySelector('.price');
-                const button = card.querySelector('.select-mode-btn');
-
-                if (count < minPlayers) {
-                    card.classList.add('disabled');
-                    priceSpan.textContent = `Not enough players (${count}/${minPlayers})`;
-                    button.disabled = true;
-                } else {
-                    card.classList.remove('disabled');
-                    if (this.account) {
-                        // If wallet is connected, show the price
-                        this.updateGameModePrices();
-                    } else {
-                        // If wallet is not connected, show connect wallet message
-                        priceSpan.textContent = 'Connect Wallet';
-                    }
-                    button.disabled = !this.account;
-                }
-            });
-        }
-    }
-
-    async connectWallet(silent = false) {
+    async connectWallet() {
         try {
             console.log('Connecting wallet...');
             // Check if MetaMask is installed
@@ -254,251 +79,6 @@ class PacaBingo {
             alert('Failed to connect wallet: ' + error.message);
             return false;
         }
-    }
-
-    disconnectWallet() {
-        this.account = null;
-        this.web3 = null;
-        
-        // Update UI
-        document.getElementById('walletStatus').innerHTML = `
-            <p>Connect your wallet to start playing</p>
-            <button class="connect-wallet" onclick="window.pacaBingo.connectWallet()">Connect Wallet</button>
-        `;
-
-        // Disable game mode buttons
-        this.disableGameButtons();
-    }
-
-    enableGameButtons() {
-        const buttons = document.querySelectorAll('.game-mode button');
-        buttons.forEach(button => {
-            button.disabled = false;
-            button.style.opacity = '1';
-        });
-    }
-
-    disableGameButtons() {
-        const buttons = document.querySelectorAll('.game-mode button');
-        buttons.forEach(button => {
-            button.disabled = true;
-            button.style.opacity = '0.5';
-        });
-    }
-
-    async updateGameModePrices() {
-        if (!this.account) return;
-
-        const modes = {
-            'Solo': 1,
-            '5v5': 2,
-            '10v10': 5,
-            '20v20': 10
-        };
-
-        document.querySelectorAll('.mode-card').forEach(async card => {
-            const mode = card.dataset.mode;
-            const priceInUSDT = modes[mode];
-            const priceSpan = card.querySelector('.price');
-            if (priceSpan) {
-                priceSpan.textContent = `${priceInUSDT} USDT`;
-            }
-        });
-    }
-
-    async selectGameMode(card) {
-        if (!this.account) {
-            alert('Please connect your wallet first');
-            return;
-        }
-
-        const mode = card.dataset.mode;
-        const modeEnum = this.getModeEnum(mode);
-        
-        try {
-            console.log('Starting ticket purchase for mode:', mode, 'enum:', modeEnum);
-            
-            // Get game mode config
-            const config = await this.contract.methods.gameModeConfigs(modeEnum).call();
-            console.log('Game mode config:', config);
-            const price = config.ticketPrice;
-
-            // Check USDT balance
-            const balance = await this.usdtContract.methods.balanceOf(this.account).call();
-            console.log('USDT Balance:', balance);
-            if (BigInt(balance) < BigInt(price)) {
-                alert('Insufficient USDT balance');
-                return;
-            }
-
-            // Check current allowance
-            const allowance = await this.usdtContract.methods.allowance(this.account, this.contractAddress).call();
-            console.log('Current allowance:', allowance);
-            
-            // First approve USDT spending if needed
-            if (BigInt(allowance) < BigInt(price)) {
-                console.log('Approving USDT spending...');
-                // Request approval for max uint256
-                const maxUint256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
-                await this.usdtContract.methods.approve(this.contractAddress, maxUint256)
-                    .send({ from: this.account });
-            } else {
-                console.log('USDT already approved');
-            }
-
-            // Then buy the ticket
-            console.log('Buying ticket...');
-            const result = await this.contract.methods.buyTicket(modeEnum)
-                .send({ 
-                    from: this.account,
-                    gasLimit: 500000 // Add explicit gas limit
-                });
-            console.log('Ticket purchased:', result);
-
-            this.selectedMode = mode;
-            
-            // Update UI after purchase
-            this.updateGameModePrices();
-            alert('Ticket purchased successfully! Game will start when enough players join.');
-        } catch (error) {
-            console.error('Error purchasing ticket:', error);
-            alert('Error purchasing ticket: ' + error.message);
-        }
-    }
-
-    getModeEnum(mode) {
-        const modeEnum = {
-            'Solo': 0,
-            '5v5': 1,
-            '10v10': 2,
-            '20v20': 3
-        }[mode];
-        return modeEnum;
-    }
-
-    async handleAccountsChanged(accounts) {
-        if (accounts.length === 0) {
-            this.disconnectWallet();
-        } else if (accounts[0] !== this.account) {
-            this.account = accounts[0];
-            await this.connectWallet(true);
-        }
-    }
-
-    toggleAdminPanel() {
-        console.log('Toggling admin panel');
-        if (this.adminControls) {
-            const isVisible = this.adminControls.style.display === 'block';
-            this.adminControls.style.display = isVisible ? 'none' : 'block';
-            console.log('Admin panel visibility:', !isVisible);
-        } else {
-            console.error('Admin controls element not found');
-        }
-    }
-
-    async updateGameModePrice() {
-        try {
-            const modeSelect = document.getElementById('adminModeSelect');
-            const newPriceInput = document.getElementById('newPrice');
-            
-            if (!modeSelect || !newPriceInput) {
-                throw new Error('Admin control elements not found');
-            }
-
-            const mode = modeSelect.value;
-            const priceInBNB = newPriceInput.value;
-            
-            if (!priceInBNB || isNaN(priceInBNB) || priceInBNB <= 0) {
-                throw new Error('Invalid price');
-            }
-
-            const priceInWei = this.web3.utils.toWei(priceInBNB, 'ether');
-            
-            // Convert mode string to enum value
-            const modeEnum = {
-                'Solo': 0,
-                '5v5': 1,
-                '10v10': 2,
-                '20v20': 3
-            }[mode];
-
-            await this.contract.methods.updateGameModeConfig(
-                modeEnum,
-                1, // minPlayers (keeping existing)
-                20, // maxPlayers (keeping existing)
-                priceInWei,
-                true // active
-            ).send({ from: this.account });
-
-            alert('Price updated successfully!');
-            await this.updateGameModePrices();
-        } catch (error) {
-            console.error('Error updating price:', error);
-            alert('Failed to update price: ' + error.message);
-        }
-    }
-
-    async updatePrizeInfo(gameId) {
-        try {
-            const game = await this.contract.methods.games(gameId).call();
-            const prizePool = game.prizePool;
-            
-            // Calculate prizes
-            const oneLinePrize = (prizePool * 30) / 100; // 30% for one line
-            const fullHousePrize = (prizePool * 70) / 100; // 70% for full house
-            
-            // Update UI with prize amounts
-            document.getElementById('oneLinePrize').textContent = `${this.web3.utils.fromWei(oneLinePrize.toString(), 'ether')} USDT`;
-            document.getElementById('fullHousePrize').textContent = `${this.web3.utils.fromWei(fullHousePrize.toString(), 'ether')} USDT`;
-            
-            // Show winner addresses if available
-            if (game.hasOneLineWinner) {
-                document.getElementById('oneLineWinner').textContent = `Winner: ${this.shortenAddress(game.oneLineWinner)}`;
-            }
-            
-            if (game.hasFullHouseWinner) {
-                document.getElementById('fullHouseWinner').textContent = `Winner: ${this.shortenAddress(game.fullHouseWinner)}`;
-            }
-        } catch (error) {
-            console.error('Error updating prize info:', error);
-        }
-    }
-
-    shortenAddress(address) {
-        return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-    }
-
-    async monitorGameState() {
-        if (!this.account) return;
-
-        try {
-            // Get player's current game
-            const gameId = await this.contract.methods.playerGames(this.account).call();
-            if (gameId === '0') return; // No active game
-
-            // Get game state
-            const gameState = await this.contract.methods.gameStates(gameId).call();
-            const currentGame = await this.contract.methods.currentGames(gameId).call();
-
-            console.log('Game State:', {gameId, gameState, currentGame});
-
-            if (gameState.finished && gameState.winner === this.account) {
-                // Player won!
-                alert('Congratulations! You won! Your prize has been automatically staked. Check your stake at https://paca.finance');
-                
-                // Try to claim prize
-                try {
-                    await this.contract.methods.claimPrize(gameId).send({ from: this.account });
-                } catch (error) {
-                    console.error('Error claiming prize:', error);
-                }
-            }
-        } catch (error) {
-            console.error('Error monitoring game state:', error);
-        }
-
-        // Check again in 5 seconds
-        setTimeout(() => this.monitorGameState(), 5000);
     }
 
     async handleGameMode(mode) {
@@ -549,15 +129,61 @@ class PacaBingo {
             const statusDiv = document.getElementById('status');
             statusDiv.className = 'status success';
             statusDiv.textContent = `Successfully joined ${mode} mode! Transaction: ${tx.transactionHash.substring(0, 10)}...`;
-            
-            // Start monitoring game state
-            this.monitorGameState();
 
         } catch (error) {
             console.error('Error in game mode:', error);
             const statusDiv = document.getElementById('status');
             statusDiv.className = 'status error';
             statusDiv.textContent = `Error: ${error.message}`;
+        }
+    }
+
+    getModeEnum(mode) {
+        const modeEnum = {
+            'solo': 0,
+            '5v5': 1,
+            '10v10': 2,
+            '20v20': 3
+        }[mode];
+        return modeEnum;
+    }
+
+    disconnectWallet() {
+        this.account = null;
+        this.web3 = null;
+        
+        // Update UI
+        document.getElementById('walletStatus').innerHTML = `
+            <p>Connect your wallet to start playing</p>
+            <button class="connect-wallet" onclick="window.pacaBingo.connectWallet()">Connect Wallet</button>
+        `;
+
+        // Disable game mode buttons
+        this.disableGameButtons();
+    }
+
+    enableGameButtons() {
+        const buttons = document.querySelectorAll('.game-mode button');
+        buttons.forEach(button => {
+            button.disabled = false;
+            button.style.opacity = '1';
+        });
+    }
+
+    disableGameButtons() {
+        const buttons = document.querySelectorAll('.game-mode button');
+        buttons.forEach(button => {
+            button.disabled = true;
+            button.style.opacity = '0.5';
+        });
+    }
+
+    handleAccountsChanged(accounts) {
+        if (accounts.length === 0) {
+            this.disconnectWallet();
+        } else if (accounts[0] !== this.account) {
+            this.account = accounts[0];
+            this.connectWallet();
         }
     }
 }

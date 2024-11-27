@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Paca Bingo</title>
-    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
-    <script defer src="dist/bundle.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
     <style>
         :root {
             --primary-color: #6C5CE7;
@@ -204,12 +203,12 @@
     <div class="container">
         <div class="header">
             <h1>Paca Bingo</h1>
-            <p class="subtitle">Play, Stake, and Win with USDT</p>
+            <p>Play, Stake, Win!</p>
         </div>
 
-        <div class="wallet-status" id="walletStatus">
+        <div id="walletStatus" class="wallet-status">
             <p>Connect your wallet to start playing</p>
-            <button class="connect-wallet" id="connectWallet">Connect Wallet</button>
+            <button id="connectWallet" class="connect-wallet">Connect Wallet</button>
         </div>
 
         <div class="game-modes">
@@ -252,5 +251,7 @@
 
         <div id="status" class="status"></div>
     </div>
+
+    <script src="app.js"></script>
 </body>
 </html>
